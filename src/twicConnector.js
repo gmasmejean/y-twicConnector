@@ -74,7 +74,7 @@ function extend (Y) {
     }
     disconnect () {
       //this.swr.leaveRoom()
-      this.options.socket.emit('yjs_leaveroom', this.options.room);
+      this.options.socket.emit('yjs_leaveroom',{room:this.options.room, id:this.options.user_id});
       super.disconnect()
     }
     reconnect () {
