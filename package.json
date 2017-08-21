@@ -1,8 +1,8 @@
 {
-  "name": "y-webrtc",
+  "name": "y-twicConnector",
   "version": "8.0.7",
-  "description": "WebRTC Connector for Yjs",
-  "main": "./src/WebRTC.js",
+  "description": "Websocket TWIC Connector for Yjs",
+  "main": "./src/twicConnector.js",
   "scripts": {
     "test": "node --harmony ./node_modules/.bin/gulp test",
     "lint": "./node_modules/.bin/standard",
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/y-js/y-webrtc.git"
+    "url": "https://github.com/gmasmejean/y-twicConnector.git"
   },
   "keywords": [
     "Yjs",
@@ -32,15 +32,13 @@
     "Coweb",
     "Concurrency"
   ],
-  "author": "Kevin Jahns <kevin.jahns@rwth-aachen.de>",
+  "author": "Guillaume Masmejean <guillaume.masmejean@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/y-js/y-webrtc/issues"
+    "url": "https://github.com/gmasmejean/y-twicConnector/issues"
   },
   "homepage": "http://y-js.org",
-  "dependencies": {
-    "simplewebrtc": "^1.18.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "gulp-uglify": "^2.0.0",
     "babel-eslint": "^4.1.2",

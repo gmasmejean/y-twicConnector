@@ -1,10 +1,8 @@
 /* global Y */
 'use strict'
 
-var SimpleWebRTC = require('simplewebrtc')
-
 function extend (Y) {
-  class WebRTC extends Y.AbstractConnector {
+  class twicConnector extends Y.AbstractConnector {
     constructor (y, options) {
       if (options === undefined) {
         throw new Error('Options must not be undefined!')
@@ -12,28 +10,43 @@ function extend (Y) {
       if (options.room == null) {
         throw new Error('You must define a room name!')
       }
+      if( options.socket == null ){
+          throw new Error('You have to set a websocket object')
+      }
+      if( options.user_id == null ){
+          throw new Error('You have to define user id')
+      }
+
       options.role = 'slave'
       super(y, options)
-      this.webrtcOptions = {
-        url: options.url || 'https://yjs.dbis.rwth-aachen.de:5078',
-        room: options.room
-      }
-      var swr = new SimpleWebRTC(this.webrtcOptions)
-      this.swr = swr
+
+      var socket = this._twicSocket;
       var self = this
-      swr.once('connectionReady', function (userId) {
+
+      self.setUserId(options.user_id);
+
+      socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
+
+      socket.on('yjs_'+options.room+'_newpeer',function( peer ){
+          self.userJoined(peer.id, 'master')
+      });
+
+      socket.on('yjs_'+options.room+'_message', function( message ){
+          self.receiveMessage( message.peer, message.payload );
+      });
+
+      socket.on('yjs_'+options.room+'_oldpeer',function( peer ){
+          self.userLeft(peer.id)
+      });
+
+
+      /*swr.once('connectionReady', function (userId) {
         // SimpleWebRTC (swr) is initialized
         swr.joinRoom(self.webrtcOptions.room)
 
         swr.once('joinedRoom', function () {
           self.setUserId(userId)
-          /*
-          var i
-          // notify the connector class about all the users that already
-          // joined the session
-          for(i in self.swr.webrtc.peers){
-            self.userJoined(self.swr.webrtc.peers[i].id, "master")
-          }*/
+
           swr.on('channelMessage', function (peer, room_, message) {
             // The client received a message
             // Check if the connector is already initialized,
@@ -57,18 +70,21 @@ function extend (Y) {
           // is already initialized
           self.userLeft(peer.id)
         })
-      })
+    })*/
     }
     disconnect () {
-      this.swr.leaveRoom()
+      //this.swr.leaveRoom()
+      this.options.socket.emit('yjs_leaveroom', this.options.room);
       super.disconnect()
     }
     reconnect () {
-      this.swr.joinRoom(this.webrtcOptions.room)
+      //this.swr.joinRoom(this.webrtcOptions.room)
+      this.options.socket.emit( 'yjs_joinroom', {room:this.options.room, id:this.options.user_id} );
       super.reconnect()
     }
     send (uid, message) {
-      var self = this
+      this.options.socket.emit('yjs_message',{room:this.options.room,peer: uid, message: message});
+      /*
       // we have to make sure that the message is sent under all circumstances
       var send = function () {
         // check if the clients still exists
@@ -84,16 +100,17 @@ function extend (Y) {
         }
       }
       // try to send the message
-      send()
+      send()*/
     }
     broadcast (message) {
-      this.swr.sendDirectlyToAll('simplewebrtc', 'yjs', message)
+        this.options.socket.emit('yjs_message',{room:this.options.room, message: message});
+      //this.swr.sendDirectlyToAll('simplewebrtc', 'yjs', message)
     }
     isDisconnected () {
       return false
     }
   }
-  Y.extend('webrtc', WebRTC)
+  Y.extend('twic', twicConnector)
 }
 
 module.exports = extend

@@ -6,9 +6,9 @@ var runSequence = require('run-sequence').use(gulp)
 
 require('../yjs/gulpfile.helper.js')(gulp, {
   polyfills: [],
-  entry: './src/WebRTC.js',
-  targetName: 'y-webrtc.js',
-  moduleName: 'yWebrtc',
+  entry: './src/twicConnector.js',
+  targetName: 'y-twic.js',
+  moduleName: 'yTwic',
   specs: []
 })
 
