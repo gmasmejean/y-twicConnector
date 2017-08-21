@@ -27,16 +27,20 @@ function extend (Y) {
 
       socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
 
-      socket.on('yjs_'+options.room+'_newpeer',function( peer ){
-          self.userJoined(peer.id, 'master')
+      socket.on('yjs_'+options.room+'_newpeer',function( data ){
+          if( data.user_id != self.options.user_id ){
+              self.userJoined( data.user_id, 'master')
+          }
       });
 
-      socket.on('yjs_'+options.room+'_message', function( message ){
-          self.receiveMessage( message.peer, message.payload );
+      socket.on('yjs_'+options.room+'_message', function( data ){
+          if( data.user_id != self.options.user_id ){
+              self.receiveMessage( data.user_id, data.message );
+          }
       });
 
-      socket.on('yjs_'+options.room+'_oldpeer',function( peer ){
-          self.userLeft(peer.id)
+      socket.on('yjs_'+options.room+'_oldpeer',function( data ){
+          self.userLeft(data.user_id)
       });
 
 
@@ -83,7 +87,7 @@ function extend (Y) {
       super.reconnect()
     }
     send (uid, message) {
-      this.options.socket.emit('yjs_message',{room:this.options.room,peer: uid, message: message});
+      this.options.socket.emit('yjs_message',{room:this.options.room, to: uid, message: message, author:this.options.user_id});
       /*
       // we have to make sure that the message is sent under all circumstances
       var send = function () {
@@ -103,7 +107,7 @@ function extend (Y) {
       send()*/
     }
     broadcast (message) {
-        this.options.socket.emit('yjs_message',{room:this.options.room, message: message});
+        this.options.socket.emit('yjs_message',{room:this.options.room, message: message, author:this.options.user_id});
       //this.swr.sendDirectlyToAll('simplewebrtc', 'yjs', message)
     }
     isDisconnected () {
