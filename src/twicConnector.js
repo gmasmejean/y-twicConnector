@@ -1,123 +1,96 @@
-/* global Y */
 'use strict'
 
 function extend (Y) {
-  class twicConnector extends Y.AbstractConnector {
-    constructor (y, options) {
-      if (options === undefined) {
-        throw new Error('Options must not be undefined!')
-      }
-      if (options.room == null) {
-        throw new Error('You must define a room name!')
-      }
-      if( options.socket == null ){
-          throw new Error('You have to set a websocket object')
-      }
-      if( options.user_id == null ){
-          throw new Error('You have to define user id')
-      }
-
-      options.role = 'slave'
-      super(y, options)
-
-      var socket = this._twicSocket;
-      var self = this
-
-      self.setUserId(options.user_id);
-
-      socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
-
-      socket.on('yjs_'+options.room+'_newpeer',function( data ){
-          if( data.user_id != self.options.user_id ){
-              self.userJoined( data.user_id, 'master')
-          }
-      });
-
-      socket.on('yjs_'+options.room+'_message', function( data ){
-          if( data.user_id != self.options.user_id ){
-              self.receiveMessage( data.user_id, data.message );
-          }
-      });
-
-      socket.on('yjs_'+options.room+'_oldpeer',function( data ){
-          self.userLeft(data.user_id)
-      });
-
-
-      /*swr.once('connectionReady', function (userId) {
-        // SimpleWebRTC (swr) is initialized
-        swr.joinRoom(self.webrtcOptions.room)
-
-        swr.once('joinedRoom', function () {
-          self.setUserId(userId)
-
-          swr.on('channelMessage', function (peer, room_, message) {
-            // The client received a message
-            // Check if the connector is already initialized,
-            // only then forward the message to the connector class
-            if (message.type != null) {
-              self.receiveMessage(peer.id, message.payload)
+    class twicConnector extends Y.AbstractConnector {
+        constructor (y, options) {
+            if (options === undefined) {
+                throw new Error('Options must not be undefined!');
             }
-          })
-        })
+            if (options.room == null) {
+                throw new Error('You must define a room name!');
+            }
+            if( options.socket == null ){
+                throw new Error('You have to set a websocket object');
+            }
+            if( options.user_id == null ){
+                throw new Error('You have to define user id');
+            }
 
-        swr.on('createdPeer', function (peer) {
-          // a new peer/client joined the session.
-          // Notify the connector class, if the connector
-          // is already initialized
-          self.userJoined(peer.id, 'master')
-        })
+            options.role = 'slave';
+            super(y, options);
 
-        swr.on('peerStreamRemoved', function (peer) {
-          // a client left the session.
-          // Notify the connector class, if the connector
-          // is already initialized
-          self.userLeft(peer.id)
-        })
-    })*/
-    }
-    disconnect () {
-      //this.swr.leaveRoom()
-      this.options.socket.emit('yjs_leaveroom',{room:this.options.room, id:this.options.user_id});
-      super.disconnect()
-    }
-    reconnect () {
-      //this.swr.joinRoom(this.webrtcOptions.room)
-      this.options.socket.emit( 'yjs_joinroom', {room:this.options.room, id:this.options.user_id} );
-      super.reconnect()
-    }
-    send (uid, message) {
-      this.options.socket.emit('yjs_message',{room:this.options.room, to: uid, message: message, author:this.options.user_id});
-      /*
-      // we have to make sure that the message is sent under all circumstances
-      var send = function () {
-        // check if the clients still exists
-        var peer = self.swr.webrtc.getPeers(uid)[0]
-        var success
-        if (peer) {
-          // success is true, if the message is successfully sent
-          success = peer.sendDirectly('simplewebrtc', 'yjs', message)
+            console.log('yTwic - CONSTRUCTOR', y, options, this);
+
+            var socket = options.socket,
+                self = this;
+
+            self._socket = options.socket;
+            self._room = options.room;
+            self._user_id = options.user_id;
+
+            self.setUserId(options.user_id);
+
+            socket.on('yjs_'+options.room+'_newpeer',function( data ){
+                console.log('NEWPEER', data , self._user_id );
+                if( data.user_id != self._user_id ){
+                    socket.emit('yjs_roommember', {room:self._room, id:self._user_id, to: data.user_id } );
+                    self.userJoined( data.user_id, 'master');
+                }
+            });
+
+            socket.on('yjs_'+options.room+'_prevpeer', function(data){
+                console.log('PREVPEER', data , self._user_id );
+                self.userJoined( data.user_id, 'master');
+            });
+
+            socket.on('yjs_'+options.room+'_message', function( data ){
+                console.log('YMESSAGE', data, self._user_id );
+                if( data.user_id != self._user_id ){
+                    self.receiveMessage( data.user_id, data.message );
+                }
+            });
+
+            socket.on('yjs_'+options.room+'_oldpeer',function( data ){
+                console.log('OLDPEER', data, self._user_id );
+                self.userLeft(data.user_id);
+            });
+
+            socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
+
+            socket.on('authenticated', function(){
+                self.reconnect();
+            });
+
+            socket.on('disconnect', function(){
+                self.disconnect();
+            });
         }
-        if (!success) {
-          // resend the message if it didn't work
-          setTimeout(send, 500)
+        disconnect () {
+            console.log('yTwic - DISCONNECT', arguments, this );
+            this._socket.emit('yjs_leaveroom',{room:this._room, id:this._user_id});
+            super.disconnect()
         }
-      }
-      // try to send the message
-      send()*/
+        reconnect () {
+            console.log( 'yTwic - RECONNECT', arguments, this);
+            this._socket.emit( 'yjs_joinroom', {room:this._room, id:this._user_id} );
+            super.reconnect()
+        }
+        send (uid, message) {
+            console.log('yTwic - SEND', uid, message, this );
+            this._socket.emit('yjs_message',{room:this._room, to: uid, message: message, author:this._user_id});
+        }
+        broadcast (message) {
+            console.log('yTwic - BROADCAST', message, this );
+            this._socket.emit('yjs_message',{room:this._room, message: message, author:this._user_id});
+        }
+        isDisconnected () {
+            return false;
+        }
     }
-    broadcast (message) {
-        this.options.socket.emit('yjs_message',{room:this.options.room, message: message, author:this.options.user_id});
-      //this.swr.sendDirectlyToAll('simplewebrtc', 'yjs', message)
-    }
-    isDisconnected () {
-      return false
-    }
-  }
-  Y.extend('twic', twicConnector)
+    Y.extend('twic', twicConnector);
 }
 
-module.exports = extend
+module.exports = extend;
 if (typeof Y !== 'undefined') {
-  extend(Y)
+    extend(Y);
 }
