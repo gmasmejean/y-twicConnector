@@ -30,31 +30,39 @@ function extend (Y) {
 
             self.setUserId(options.user_id);
 
-            socket.on('yjs_'+options.room+'_newpeer',function( data ){
+            // DEFINE EVENTS HANDLERS
+            this._onNewPeer = function( data ){
                 console.log('NEWPEER', data , self._user_id );
                 if( data.user_id != self._user_id ){
                     socket.emit('yjs_roommember', {room:self._room, id:self._user_id, to: data.user_id } );
                     self.userJoined( data.user_id, 'master');
                 }
-            });
+            };
 
-            socket.on('yjs_'+options.room+'_prevpeer', function(data){
+            this._onOldPeer = function( data ){
+                console.log('OLDPEER', data, self._user_id );
+                self.userLeft(data.user_id);
+            };
+
+            this._onPrevPeer = function(data){
                 console.log('PREVPEER', data , self._user_id );
                 self.userJoined( data.user_id, 'master');
-            });
+            };
 
-            socket.on('yjs_'+options.room+'_message', function( data ){
+            this._onMessage = function( data ){
                 console.log('YMESSAGE', data, self._user_id );
                 if( data.user_id != self._user_id ){
                     self.receiveMessage( data.user_id, data.message );
                 }
-            });
+            };
 
-            socket.on('yjs_'+options.room+'_oldpeer',function( data ){
-                console.log('OLDPEER', data, self._user_id );
-                self.userLeft(data.user_id);
-            });
+            // BIND EVENTS
+            socket.on('yjs_'+options.room+'_newpeer', this._onNewPeer);
+            socket.on('yjs_'+options.room+'_oldpeer', this._onOldPeer);
+            socket.on('yjs_'+options.room+'_prevpeer', this._onPrevPeer);
+            socket.on('yjs_'+options.room+'_message', this._onMessage);
 
+            // JOIN YJS ROOM
             socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
 
             socket.on('authenticated', function(){
@@ -64,6 +72,15 @@ function extend (Y) {
             socket.on('disconnect', function(){
                 self.disconnect();
             });
+        }
+        destroy(){
+            // UNBIND EVENTS
+            socket.off('yjs_'+options.room+'_newpeer', this._onNewPeer);
+            socket.off('yjs_'+options.room+'_oldpeer', this._onOldPeer);
+            socket.off('yjs_'+options.room+'_prevpeer', this._onPrevPeer);
+            socket.off('yjs_'+options.room+'_message', this._onMessage);
+
+            this.disconnect();
         }
         disconnect () {
             console.log('yTwic - DISCONNECT', arguments, this );
@@ -84,7 +101,7 @@ function extend (Y) {
             this._socket.emit('yjs_message',{room:this._room, message: message, author:this._user_id});
         }
         isDisconnected () {
-            return false;
+            return this._socket.disconnected;
         }
     }
     Y.extend('twic', twicConnector);
