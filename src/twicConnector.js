@@ -24,6 +24,7 @@ function extend (Y) {
             var socket = options.socket,
                 self = this;
 
+            self._messageid = 0;
             self._socket = options.socket;
             self._room = options.room;
             self._user_id = options.user_id;
@@ -51,8 +52,8 @@ function extend (Y) {
             };
             // ON MESSAGE
             this._onMessage = function( data ){
-                console.log('YMESSAGE', data, self._user_id );
                 if( data.user_id != self._user_id ){
+                    console.log('yjs msg received', data.count, data );
                     self.receiveMessage( data.user_id, data.message );
                 }
             };
@@ -71,7 +72,7 @@ function extend (Y) {
             // JOIN YJS ROOM
             socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
 
-            // WHEN SOCKET IS DISCONNECTED -> DISCONNECT 
+            // WHEN SOCKET IS DISCONNECTED -> DISCONNECT
             socket.on('disconnect', function(){
                 self.disconnect();
             });
@@ -85,6 +86,7 @@ function extend (Y) {
             this._socket.off('authenticated', this._onAuth );
 
             this.disconnect();
+            super.destroy();
         }
         disconnect () {
             console.log('yTwic - DISCONNECT', arguments, this );
@@ -97,12 +99,14 @@ function extend (Y) {
             super.reconnect()
         }
         send (uid, message) {
-            console.log('yTwic - SEND', uid, message, this );
-            this._socket.emit('yjs_message',{room:this._room, to: uid, message: message, author:this._user_id});
+            this._messageid++;
+            console.log('yTwic - SEND', uid, message );
+            this._socket.emit('yjs_message',{room:this._room, to: uid, message: message, author:this._user_id, count: this._messageid });
         }
         broadcast (message) {
-            console.log('yTwic - BROADCAST', message, this );
-            this._socket.emit('yjs_message',{room:this._room, message: message, author:this._user_id});
+            this._messageid++;
+            console.log('yTwic - BROADCAST', message );
+            this._socket.emit('yjs_message',{room:this._room, message: message, author:this._user_id, count: this._messageid });
         }
         isDisconnected () {
             return this._socket.disconnected;
