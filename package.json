@@ -1,6 +1,6 @@
 {
   "name": "y-twicConnector",
-  "version": "8.0.7",
+  "version": "0.0.1",
   "description": "Websocket TWIC Connector for Yjs",
   "main": "./src/twicConnector.js",
   "scripts": {
@@ -15,8 +15,7 @@
   "standard": {
     "parser": "babel-eslint",
     "ignore": [
-      "build/**",
-      "dist/**"
+      "build/**"
     ]
   },
   "repository": {
