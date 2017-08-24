@@ -1,58 +1,87 @@
-# WebRTC Connector for [Yjs](https://github.com/y-js/yjs)
+# TWIC Connector for [Yjs](https://github.com/y-js/yjs)
 
-It propagates document updates directly to all users via WebRTC. While WebRTC is not the most reliable connector, messages are propagated with almost no delay.
-
-* Very fast message propagation (not noticeable)
-* Very easy to use
-* Very little server load (you still have to set up a [signaling server](http://www.html5rocks.com/en/tutorials/webrtc/infrastructure/))
-* Not suited for a large amount of collaborators
-* WebRTC is not supported in all browsers, and some have troubles communicating with each other
-
-We provide you with a free signaling server (it is used by default), but in production you should set up your own signaling server. You could use the [signalmaster](https://github.com/DadaMonad/signalmaster) from &yet, which is very easy to set up.
-
-## Use it!
-Retrieve this with bower or npm.
-
-##### NPM
-```
-npm install y-webrtc --save
-```
-
-##### Bower
-```
-bower install y-webrtc --save
-```
-
-# Start Hacking
-This connector is also a nice starting point to build your own connector. The only 75 SLOCs of code are pretty well documented and understandable. If you have any troubles, don't hesitate to ask me for help!
+TWIC platform connector used for QuillJS collaborative editor.
+Uses TWIC Socket.io server to help users collaborate in a SyncAll way.
 
 ### Example
 
 ```
+CLIENT SIDE =>
 Y({
-  db: {
-    name: 'memory'
-  },
-  connector: {
-    name: 'webrtc', // use the webrtc connector
-    room: 'Textarea-example-dev'
-  },
-  sourceDir: '/bower_components', // location of the y-* modules
-  share: {
-    textarea: 'Text' // y.share.textarea is of type Y.Text
-  }
-}).then(function (y) {
-  // bind the textarea to a shared text element
-  y.share.textarea.bind(document.getElementById('textfield'))
-}
-```
+    db: {
+        name: 'memory'
+    },
+    connector: {
+        name: 'twic',//'twic',
+        room: scope.shared.room,
+        user_id: scope.shared.user_id,
+        socket: socket
+    },
+    share: {
+        richtext: 'Richtext'
+    }
+}).then(function( y ){
+    var options = {
+        modules: {
+            toolbar: {
+                container : ['bold', 'italic', 'underline', 'link', { 'list': 'bullet' }]
+            }
+        },
+        theme: 'snow'
+    };
+    var editor = new Quill(document.querySelector("#text-editor"), options);
 
-# Set up Signaling server
-This webrtc connector is compatible to [this signaling server](https://github.com/DadaMonad/signalmaster) (signalmaster)
+    y.share.richtext.bindQuill( editor );
+});
+
+SERVER SIDE =>
+server.on('connection',function(socket){
+
+    // LISTEN TO USER JOINING ROOM -> Join the room / Tell everybody you're there / Set disconnect leave handler.
+    socket.on('yjs_joinroom', function(data){ // data:{room:ROOM, id:USERID}
+        socket.join( data.room );
+        socket.join( data.room+'#'+data.id );
+        server.to( data.room ).emit('yjs_'+data.room+'_newpeer', {user_id:data.id} );
+
+        if( !socket.rooms ){
+            socket.rooms = {};
+        }
+
+        socket.rooms[data.room+'#'+data.id] = function(){
+            socket.leave( data.room );
+            socket.leave( data.room+'#'+data.id );
+            server.to( data.room ).emit('yjs_'+data.room+'_oldpeer', {user_id:data.id} );
+        }
+
+        socket.on('disconnect',socket.rooms[data.room+'#'+data.id]);
+    });
+
+    // LISTEN TO PEER ANSWERING TO 'JOIN ROOM EVENT' SO NEWCOMERS ARE NOTIFIED OF ROOM MEMBERS.
+    socket.on('yjs_roommember',function(data){ // data:{room:ROOM, id:USERID, to:USERID }
+        server.to( data.room+'#'+data.to ).emit('yjs_'+data.room+'_prevpeer', {user_id:data.id} );
+    });
+
+    // LISTEN TO USER LEAVING ROOM
+    socket.on('yjs_leaveroom', function(data){ // data:{room:ROOM, id:USERID}
+        socket.leave( data.room );
+        socket.leave( data.room+'#'+data.id );
+        server.to( data.room ).emit('yjs_'+data.room+'_oldpeer', {user_id:data.id} );
+
+        if( socket.rooms && socket.rooms[data.room+'#'+data.id] ){
+            socket.removeListener('disconnect', socket.rooms[data.room+'#'+data.id] );
+            delete( socket.rooms[data.room+'#'+data.id] );
+        }
+    });
+
+    // LISTEN TO MESSAGE.
+    socket.on('yjs_message', function(data){ // data:{room:ROOM, to:USERID , message:MESSAGE, author:USERID}
+        if( data.to ){
+            socket.to( data.room+'#'+data.to ).emit('yjs_'+data.room+'_message',{message:data.message,user_id:data.author});
+        }else{
+            socket.to( data.room ).emit('yjs_'+data.room+'_message',{message:data.message,user_id:data.author});
+        }
+    });
+```
 
 ## License
 Yjs is licensed under the [MIT License](./LICENSE).
-
-<kevin.jahns@rwth-aachen.de>
-
-

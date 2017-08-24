@@ -6,13 +6,13 @@ function extend (Y) {
             if (options === undefined) {
                 throw new Error('Options must not be undefined!');
             }
-            if (options.room == null) {
+            else if ( !options.room ) {
                 throw new Error('You must define a room name!');
             }
-            if( options.socket == null ){
+            else if( !options.socket ){
                 throw new Error('You have to set a websocket object');
             }
-            if( options.user_id == null ){
+            else if( !options.user_id ){
                 throw new Error('You have to define user id');
             }
 
@@ -31,6 +31,7 @@ function extend (Y) {
             self.setUserId(options.user_id);
 
             // DEFINE EVENTS HANDLERS
+            // WHEN A PEER JOIN THE ROOM.
             this._onNewPeer = function( data ){
                 console.log('NEWPEER', data , self._user_id );
                 if( data.user_id != self._user_id ){
@@ -38,22 +39,26 @@ function extend (Y) {
                     self.userJoined( data.user_id, 'master');
                 }
             };
-
+            // WHEN A PEER LEAVE THE ROOM.
             this._onOldPeer = function( data ){
                 console.log('OLDPEER', data, self._user_id );
                 self.userLeft(data.user_id);
             };
-
+            // AFTER WE JOINED THE ROOM, EACH PEER TELL US THEY'RE IN...
             this._onPrevPeer = function(data){
                 console.log('PREVPEER', data , self._user_id );
                 self.userJoined( data.user_id, 'master');
             };
-
+            // ON MESSAGE
             this._onMessage = function( data ){
                 console.log('YMESSAGE', data, self._user_id );
                 if( data.user_id != self._user_id ){
                     self.receiveMessage( data.user_id, data.message );
                 }
+            };
+            // WHEN SOCKET RECONNECT & IS AUTHENTICATED
+            this._onAuth = function(){
+                self.reconnect();
             };
 
             // BIND EVENTS
@@ -61,24 +66,23 @@ function extend (Y) {
             socket.on('yjs_'+options.room+'_oldpeer', this._onOldPeer);
             socket.on('yjs_'+options.room+'_prevpeer', this._onPrevPeer);
             socket.on('yjs_'+options.room+'_message', this._onMessage);
+            socket.on('authenticated', this._onAuth);
 
             // JOIN YJS ROOM
             socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
 
-            socket.on('authenticated', function(){
-                self.reconnect();
-            });
-
+            // WHEN SOCKET IS DISCONNECTED -> DISCONNECT 
             socket.on('disconnect', function(){
                 self.disconnect();
             });
         }
         destroy(){
             // UNBIND EVENTS
-            socket.off('yjs_'+options.room+'_newpeer', this._onNewPeer);
-            socket.off('yjs_'+options.room+'_oldpeer', this._onOldPeer);
-            socket.off('yjs_'+options.room+'_prevpeer', this._onPrevPeer);
-            socket.off('yjs_'+options.room+'_message', this._onMessage);
+            this._socket.off('yjs_'+this._room+'_newpeer', this._onNewPeer);
+            this._socket.off('yjs_'+this._room+'_oldpeer', this._onOldPeer);
+            this._socket.off('yjs_'+this._room+'_prevpeer', this._onPrevPeer);
+            this._socket.off('yjs_'+this._room+'_message', this._onMessage);
+            this._socket.off('authenticated', this._onAuth );
 
             this.disconnect();
         }
