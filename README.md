@@ -12,10 +12,10 @@ Y({
         name: 'memory'
     },
     connector: {
-        name: 'twic',//'twic',
-        room: scope.shared.room,
-        user_id: scope.shared.user_id,
-        socket: socket
+        name: 'twic',
+        room: ROOM_NAME,
+        user_id: USER_ID,
+        socket: SOCKET_FROM_SOCKETIO
     },
     share: {
         richtext: 'Richtext'
@@ -38,7 +38,8 @@ SERVER SIDE =>
 server.on('connection',function(socket){
 
     // LISTEN TO USER JOINING ROOM -> Join the room / Tell everybody you're there / Set disconnect leave handler.
-    socket.on('yjs_joinroom', function(data){ // data:{room:ROOM, id:USERID}
+    socket.on('yjs_joinroom', function(data){   // data:{room:ROOM, id:USERID}
+
         socket.join( data.room );
         socket.join( data.room+'#'+data.id );
         server.to( data.room ).emit('yjs_'+data.room+'_newpeer', {user_id:data.id} );
@@ -54,15 +55,19 @@ server.on('connection',function(socket){
         }
 
         socket.on('disconnect',socket.rooms[data.room+'#'+data.id]);
+
     });
 
     // LISTEN TO PEER ANSWERING TO 'JOIN ROOM EVENT' SO NEWCOMERS ARE NOTIFIED OF ROOM MEMBERS.
     socket.on('yjs_roommember',function(data){ // data:{room:ROOM, id:USERID, to:USERID }
+
         server.to( data.room+'#'+data.to ).emit('yjs_'+data.room+'_prevpeer', {user_id:data.id} );
+
     });
 
     // LISTEN TO USER LEAVING ROOM
-    socket.on('yjs_leaveroom', function(data){ // data:{room:ROOM, id:USERID}
+    socket.on('yjs_leaveroom', function(data){  // data:{room:ROOM, id:USERID}
+
         socket.leave( data.room );
         socket.leave( data.room+'#'+data.id );
         server.to( data.room ).emit('yjs_'+data.room+'_oldpeer', {user_id:data.id} );
@@ -71,15 +76,18 @@ server.on('connection',function(socket){
             socket.removeListener('disconnect', socket.rooms[data.room+'#'+data.id] );
             delete( socket.rooms[data.room+'#'+data.id] );
         }
+
     });
 
     // LISTEN TO MESSAGE.
     socket.on('yjs_message', function(data){ // data:{room:ROOM, to:USERID , message:MESSAGE, author:USERID}
+
         if( data.to ){
             socket.to( data.room+'#'+data.to ).emit('yjs_'+data.room+'_message',{message:data.message,user_id:data.author});
         }else{
             socket.to( data.room ).emit('yjs_'+data.room+'_message',{message:data.message,user_id:data.author});
         }
+        
     });
 ```
 
