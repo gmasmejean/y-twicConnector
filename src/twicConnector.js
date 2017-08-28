@@ -29,13 +29,19 @@ function extend (Y) {
             self._room = options.room;
             self._user_id = options.user_id;
 
-            self.setUserId(options.user_id);
+            //self.setUserId(options.user_id);
 
             // DEFINE EVENTS HANDLERS
             // WHEN A PEER JOIN THE ROOM.
             this._onNewPeer = function( data ){
                 console.log('NEWPEER', data , self._user_id );
-                if( data.user_id != self._user_id ){
+
+                if( data.user_id == self._user_id ){
+                    setTimeout(function(){
+                        self.setUserId(options.user_id);
+                    }, 5000 );
+                }
+                else if( data.user_id != self._user_id ){
                     socket.emit('yjs_roommember', {room:self._room, id:self._user_id, to: data.user_id } );
                     self.userJoined( data.user_id, 'master');
                 }
@@ -61,6 +67,11 @@ function extend (Y) {
             this._onAuth = function(){
                 self.reconnect();
             };
+            // WHEN SOCKET IS DISCONNECTED -> DISCONNECT
+            this._onDisconnect = function(){
+                console.log('SOCKET DISCONNECT ?!');
+                self.disconnect();
+            };
 
             // BIND EVENTS
             socket.on('yjs_'+options.room+'_newpeer', this._onNewPeer);
@@ -68,14 +79,10 @@ function extend (Y) {
             socket.on('yjs_'+options.room+'_prevpeer', this._onPrevPeer);
             socket.on('yjs_'+options.room+'_message', this._onMessage);
             socket.on('authenticated', this._onAuth);
+            socket.on('disconnect', this._onDisconnect);
 
             // JOIN YJS ROOM
             socket.emit( 'yjs_joinroom', {room:options.room, id:options.user_id} );
-
-            // WHEN SOCKET IS DISCONNECTED -> DISCONNECT
-            socket.on('disconnect', function(){
-                self.disconnect();
-            });
         }
         destroy(){
             // UNBIND EVENTS
@@ -86,10 +93,10 @@ function extend (Y) {
             this._socket.off('authenticated', this._onAuth );
 
             this.disconnect();
-            super.destroy();
         }
         disconnect () {
             console.log('yTwic - DISCONNECT', arguments, this );
+            this._socket.off('disconnect', this._onDisconnect )
             this._socket.emit('yjs_leaveroom',{room:this._room, id:this._user_id});
             super.disconnect()
         }
