@@ -24,7 +24,9 @@ function extend (Y) {
             var socket = options.socket,
                 self = this;
 
-            self._messageid = 0;
+            self._messageid = 1;
+            self._eventid = 1;
+
             self._socket = options.socket;
             self._room = options.room;
             self._user_id = options.user_id;
@@ -34,26 +36,26 @@ function extend (Y) {
             // DEFINE EVENTS HANDLERS
             // WHEN A PEER JOIN THE ROOM.
             this._onNewPeer = function( data ){
-                console.log('NEWPEER', data , self._user_id );
                 if( data.user_id != self._user_id ){
+                    console.log('newPeer', data , self._user_id, self._eventid++ );
                     socket.emit('yjs_roommember', {room:self._room, id:self._user_id, to: data.user_id } );
                     self.userJoined( data.user_id, 'master');
                 }
             };
             // WHEN A PEER LEAVE THE ROOM.
             this._onOldPeer = function( data ){
-                console.log('OLDPEER', data, self._user_id );
+                console.log('oldPeer', data, self._user_id, self._eventid++ );
                 self.userLeft(data.user_id);
             };
             // AFTER WE JOINED THE ROOM, EACH PEER TELL US THEY'RE IN...
             this._onPrevPeer = function(data){
-                console.log('PREVPEER', data , self._user_id );
+                console.log('newPeer', data , self._user_id, self._eventid++ );
                 self.userJoined( data.user_id, 'master');
             };
             // ON MESSAGE
             this._onMessage = function( data ){
                 if( data.user_id != self._user_id ){
-                    console.log('yjs msg received', data.count, data );
+                    console.log('receive', data.count, data.message.type, data, self._eventid++ );
                     self.receiveMessage( data.user_id, data.message );
                 }
             };
