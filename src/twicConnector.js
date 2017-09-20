@@ -87,9 +87,11 @@ function extend (Y) {
             socket.emit( 'yjs_joinroom', {room:options.room} );
         }
         destroy(){
+            console.log('connector destroyed');
             // UNBIND EVENTS
             this._socket.off('yjs_'+this._room+'_newpeer', this._onNewPeer);
             this._socket.off('yjs_'+this._room+'_oldpeer', this._onOldPeer);
+            this._socket.off('yjs_'+this._room+'_joined', this._onJoin);
             this._socket.off('authenticated', this._onAuth );
             this._socket.off('disconnect', this._onDisconnect );
             // THEN DISCONNECT
