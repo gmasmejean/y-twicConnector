@@ -1,5 +1,5 @@
 {
-  "name": "y-twicConnector",
+  "name": "y-twic-connector",
   "version": "0.0.1",
   "description": "Websocket TWIC Connector for Yjs",
   "main": "./src/twicConnector.js",
