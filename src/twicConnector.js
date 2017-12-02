@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 function extend (Y) {
     class twicConnector extends Y.AbstractConnector {
@@ -43,6 +43,7 @@ function extend (Y) {
             };
             // ON MESSAGE
             this._onMessage = function( data ){
+                console.log('yjs msg', data);
                 if( data.type === 'yjs_confirm' ){
                     if( self.timeout_ids[data.payload] ){
                         clearTimeout( self.timeout_ids[data.payload] );
